@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from '../components/Layout/Navbar';
 import { Sidebar } from '../components/Layout/Sidebar';
+import { BottomMenu } from '../components/Layout/BottomMenu';
 
 export const MainLayout = ({ user, isGuest, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -32,6 +33,9 @@ export const MainLayout = ({ user, isGuest, onLogout }) => {
       </div>
 
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      
+      {/* Mobile Bottom Navigation (faqat kichik ekranlarda) */}
+      <BottomMenu />
       
       {/* Main content - Scrollable Area */}
       {/* For Immersive pages, we disable main scroll and remove padding so content takes full height */}

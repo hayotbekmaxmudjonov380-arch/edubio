@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ArrowLeft, PlayCircle, BookOpen, Video, Box, PenTool, Play, ExternalLink } from 'lucide-react';
 import { BotanikaIntro } from '../components/lessons/botanika/BotanikaIntro';
+import { PlaceholderPage } from '../components/PlaceholderPage';
+import { useSystem, useSubject } from '../context/SystemContext';
 import { FloweringPlants } from '../components/lessons/botanika/FloweringPlants';
 import { PlantLifeForms } from '../components/lessons/botanika/PlantLifeForms';
 import { PlantCellStructure } from '../components/lessons/botanika/PlantCellStructure';
@@ -161,6 +163,24 @@ const getYouTubeId = (url) => {
 };
 
 export const LessonsPage = () => {
+  const system = useSystem();
+  const subject = useSubject();
+
+  // INSTITUT TIZIMI — hozircha bo'sh bo'lim (dizayn maktab tizimi bilan bir xil)
+  if (system === 'institute') {
+    return (
+      <PlaceholderPage
+        title={`${subject?.title || 'Fan'} darslari`}
+        description={`Institut tizimi uchun ${subject?.title?.toLowerCase() || 'fan'} darslari hozir tayyorlanmoqda. Tez orada shu yerda joylashadi.`}
+      />
+    );
+  }
+
+  return <SchoolLessonsPage />;
+};
+
+// MAKTAB TIZIMI — avvalgi barcha kontent saqlangan (hech narsa o'chmagan)
+const SchoolLessonsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedResourceType, setSelectedResourceType] = useState(null); // 'lessons', 'videos', '3d', 'quiz'
   const [selectedLesson, setSelectedLesson] = useState(null);

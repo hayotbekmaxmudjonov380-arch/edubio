@@ -520,8 +520,8 @@ export const ChatInterface = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-3 md:p-6 z-20">
+      {/* Input Area (pb-24: pastki menyu ko'rinadigan ekranlarda yopilib qolmasligi uchun) */}
+      <div className="p-3 pb-24 md:p-6 md:pb-24 lg:pb-6 z-20">
         <div className="max-w-3xl mx-auto relative">
           
           {/* File Preview (Both Images and Docs) */}

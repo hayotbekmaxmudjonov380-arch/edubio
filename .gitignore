@@ -12,6 +12,22 @@ dist
 dist-ssr
 *.local
 
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Capacitor / Android build
+android/.gradle
+android/build
+android/app/build
+android/.idea
+.capacitor
+
+# Docs & scratch
+.superpowers
+test_out.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

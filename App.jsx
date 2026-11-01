@@ -6,6 +6,8 @@ import { LibraryPage } from './pages/LibraryPage';
 import { BioAiPage } from './pages/BioAiPage';
 import { LessonsPage } from './pages/LessonsPage';
 import { LoginPage } from './pages/LoginPage';
+import { SubjectPicker } from './pages/SubjectPicker';
+import { SystemProvider, SubjectProvider } from './context/SystemContext';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -13,6 +15,16 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  // 'school' — Maktab tizimi, 'institute' — Institut tizimi
+  const [system, setSystem] = useState(() => localStorage.getItem('eduSystem') || 'school');
+  // Institut tizimida tanlangan fan (Fizika, Matematika...)
+  const [subject, setSubject] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('eduSubject')) || null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     // 1. Mehmon rejimini tekshirish
@@ -30,9 +42,33 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  const handleGuestLogin = () => {
+  // Kirish sahifasidagi kartochka tanlandi: Maktab yoki Institut tizimi
+  const handleSystemSelect = (selectedSystem) => {
+    setSystem(selectedSystem);
+    localStorage.setItem('eduSystem', selectedSystem);
     setIsGuest(true);
     localStorage.setItem('isGuest', 'true');
+    // Institut tizimini tanlasa, fan avvaldan tanlangan bo'lmasin
+    if (selectedSystem === 'institute') {
+      setSubject(null);
+      localStorage.removeItem('eduSubject');
+    }
+  };
+
+  // Institut tizimi: fan tanlandi
+  const handleSubjectSelect = (selectedSubject) => {
+    setSubject(selectedSubject);
+    localStorage.setItem('eduSubject', JSON.stringify(selectedSubject));
+  };
+
+  // "Boshqa tizimni tanlash" tugmasi: kirish sahifasiga qaytish
+  const handleBackToLogin = () => {
+    setIsGuest(false);
+    setSystem('school');
+    setSubject(null);
+    localStorage.removeItem('isGuest');
+    localStorage.removeItem('eduSystem');
+    localStorage.removeItem('eduSubject');
   };
 
   const handleLogout = async () => {
@@ -42,7 +78,11 @@ export default function App() {
       console.error("Chiqishda xatolik:", error);
     }
     setIsGuest(false);
+    setSystem('school');
+    setSubject(null);
     localStorage.removeItem('isGuest');
+    localStorage.removeItem('eduSystem');
+    localStorage.removeItem('eduSubject');
   };
 
   if (loading) {
@@ -53,31 +93,40 @@ export default function App() {
     );
   }
 
-  // Agar foydalanuvchi tizimga kirmagan bo'lsa va mehmon ham bo'lmasa -> LOGIN SAHIFASI
+  // Agar foydalanuvchi tizimga kirmagan bo'lsa va mehmon ham bo'lmasa -> LOGIN SAHIFASI (2 ta kartochka)
   if (!user && !isGuest) {
-    return <LoginPage onGuestLogin={handleGuestLogin} />;
+    return <LoginPage onSystemSelect={handleSystemSelect} />;
   }
 
-  // Agar kirgan bo'lsa -> ASOSIY DASTUR
+  // INSTITUT TIZIMI: fan hali tanlanmagan bo'lsa -> FANLAR TANLASH SAHIFASI
+  if (system === 'institute' && !subject) {
+    return <SubjectPicker onSelect={handleSubjectSelect} onBack={handleBackToLogin} />;
+  }
+
+  // Agar kirgan bo'lsa -> ASOSIY DASTUR (tanlangan tizim bilan)
   return (
-    <Routes>
-      <Route 
-        path="/" 
-        element={
-          <MainLayout 
-            user={user} 
-            isGuest={isGuest} 
-            onLogout={handleLogout} 
-          />
-        }
-      >
-        <Route index element={<Dashboard />} />
-        <Route path="lessons" element={<LessonsPage />} />
-        <Route path="library" element={<LibraryPage />} />
-        <Route path="bio-ai" element={<BioAiPage />} />
-      </Route>
-      {/* Noto'g'ri manzillar uchun qayta yo'naltirish */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <SystemProvider value={system}>
+      <SubjectProvider value={subject}>
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              <MainLayout 
+                user={user} 
+                isGuest={isGuest} 
+                onLogout={handleLogout} 
+              />
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="lessons" element={<LessonsPage />} />
+            <Route path="library" element={<LibraryPage />} />
+            <Route path="bio-ai" element={<BioAiPage />} />
+          </Route>
+          {/* Noto'g'ri manzillar uchun qayta yo'naltirish */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </SubjectProvider>
+    </SystemProvider>
   );
 }

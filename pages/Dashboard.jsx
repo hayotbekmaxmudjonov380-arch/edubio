@@ -1,6 +1,9 @@
 import React from 'react';
+import { useSystem, useSubject } from '../context/SystemContext';
 
 export const Dashboard = () => {
+  const isInstitute = useSystem() === 'institute';
+  const subject = useSubject();
   return (
     // Scrollable container for the Dashboard content
     <div className="relative w-full h-full overflow-hidden bg-slate-900">
@@ -21,11 +24,22 @@ export const Dashboard = () => {
         <div className="w-full md:w-2/3 lg:w-[42%] bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-3xl p-5 md:p-7 text-left shadow-2xl animate-fade-in transition-all ring-1 ring-white/5 mb-6">
           <h1 className="text-2xl md:text-4xl font-extrabold mb-3 drop-shadow-lg tracking-tight leading-tight">
             <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent animate-gradient-x bg-[length:200%_auto]">EduBio</span>{' '}
-            <span className="bg-gradient-to-r from-pink-400 via-rose-500 to-purple-500 bg-clip-text text-transparent animate-gradient-x bg-[length:200%_auto]">Platformasi v1.0</span>
+            <span className="bg-gradient-to-r from-pink-400 via-rose-500 to-purple-500 bg-clip-text text-transparent animate-gradient-x bg-[length:200%_auto]">
+              {isInstitute ? `${subject?.title || 'Institut'} — Institut v1.0` : 'Platformasi v1.0'}
+            </span>
           </h1>
           <p className="text-gray-100 text-sm md:text-base font-medium leading-relaxed opacity-95 drop-shadow-md mb-4">
-            Salom O'quvchilar! Platformaga xush kelibsiz.<br/>
-            Biologiya fanini zamonaviy usulda, sun'iy intellekt yordamida o'rganing.
+            {isInstitute ? (
+              <>
+                Salom! {subject?.title || 'Institut'} fani bo'limiga xush kelibsiz.<br/>
+                Hozircha bu bo'lim tayyorlanmoqda — tez orada darslar va kutubxona bilan tanishasiz.
+              </>
+            ) : (
+              <>
+                Salom O'quvchilar! Platformaga xush kelibsiz.<br/>
+                Biologiya fanini zamonaviy usulda, sun'iy intellekt yordamida o'rganing.
+              </>
+            )}
           </p>
         </div>
       </div>

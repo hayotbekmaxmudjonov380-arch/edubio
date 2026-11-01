@@ -2,8 +2,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { X, Home, Book, Sparkles, GraduationCap, Hexagon, Dna, FlaskConical, Atom } from 'lucide-react';
+import { useSystem, useSubject } from '../../context/SystemContext';
 
 export const Sidebar = ({ isOpen, onClose }) => {
+  const system = useSystem();
+  const subject = useSubject();
   const links = [
     { to: '/', label: 'Bosh sahifa', icon: Home },
     { to: '/lessons', label: 'Darslar', icon: GraduationCap },
@@ -95,7 +98,11 @@ export const Sidebar = ({ isOpen, onClose }) => {
           {/* Bottom Info Area */}
           <div className="mt-auto p-6 border-t border-white/5">
             <div className="bg-white/5 rounded-xl p-4 border border-white/5 backdrop-blur-sm">
-               <h4 className="text-teal-400 text-xs font-bold uppercase tracking-wider mb-1">Versiya 1.0</h4>
+               <h4 className="text-teal-400 text-xs font-bold uppercase tracking-wider mb-1">
+                 {system === 'institute'
+                   ? `Institut · ${subject?.title || ''}`
+                   : 'Maktab tizimi v1.0'}
+               </h4>
                <p className="text-gray-500 text-[10px]">EduBio AI tomonidan quvvatlanadi</p>
             </div>
           </div>

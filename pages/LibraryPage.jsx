@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Book, Download, Search, Filter, CheckCircle, FileText, Star } from 'lucide-react';
+import { PlaceholderPage } from '../components/PlaceholderPage';
+import { useSystem, useSubject } from '../context/SystemContext';
 
 // --- Mock Data: Biology Textbooks ---
 const LIBRARY_BOOKS = [
@@ -117,6 +119,24 @@ const LIBRARY_BOOKS = [
 ];
 
 export const LibraryPage = () => {
+  const system = useSystem();
+  const subject = useSubject();
+
+  // INSTITUT TIZIMI — hozircha bo'sh bo'lim (dizayn maktab tizimi bilan bir xil)
+  if (system === 'institute') {
+    return (
+      <PlaceholderPage
+        title={`${subject?.title || 'Fan'} kutubxonasi`}
+        description={`Institut tizimi uchun ${subject?.title?.toLowerCase() || 'fan'} kutubxonasi hozir to'ldirilmoqda. Tez orada darsliklar va adabiyotlar shu yerda bo'ladi.`}
+      />
+    );
+  }
+
+  return <SchoolLibraryPage />;
+};
+
+// MAKTAB TIZIMI — avvalgi barcha kontent saqlangan (hech narsa o'chmagan)
+const SchoolLibraryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('all');
   const [downloadingIds, setDownloadingIds] = useState(new Set());
