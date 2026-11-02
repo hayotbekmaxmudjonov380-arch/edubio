@@ -90,13 +90,9 @@ export default function App() {
   // FizLab AI lab tugaganda diagnostika natijasini qabul qilish
   const handleLabFinish = (diagnostic) => {
     if (!diagnostic) {
-      // Orqaga qaytildi
       return;
     }
-    console.log("FizLab diagnostika:", diagnostic);
-    alert(
-      `Diagnostika yakunlandi!\n\nIsm: ${diagnostic.name}\nRang: ${diagnostic.overallColor}\nXatolar: ${diagnostic.totalErrors}\n\n${diagnostic.aiText}`
-    );
+    console.log("FizLab diagnostika yakunlandi:", diagnostic);
   };
 
   if (loading) {

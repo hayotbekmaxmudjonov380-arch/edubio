@@ -14,26 +14,13 @@ export const STEP_STANDARD_TIME = {
   step7: 60,   // Xulosa yozish
 };
 
-// Xatolik chegaralari (hujjatdan)
-// Yashil: xato 0–1, vaqt me'yoriy
-// Sariq: xato ≥2 yoki vaqt 1.5× ko'p
-// Qizil: xato ≥3 yoki vaqt 2× ko'p yoki "Yordam" bosilgan
-
 export const DIAG_RULES = {
   green: { maxErrors: 1, maxTimeMultiplier: 1.0 },
   yellow: { maxErrors: 2, maxTimeMultiplier: 1.5 },
   red: { maxErrors: 3, maxTimeMultiplier: 2.0 },
 };
 
-/**
- * Bitta bosqich uchun rang aniqlash
- * @param {number} errors — xato soni
- * @param {number} spentSeconds — sarflangan vaqt
- * @param {number} standardSeconds — me'yoriy vaqt
- * @param {boolean} helpRequested — "Yordam" bosilganmi
- * @returns {'green' | 'yellow' | 'red'}
- */
-export function getStepColor(errors, spentSeconds, standardSeconds, helpRequested = false) {
+export function getStepColor(errors = 0, spentSeconds = 0, standardSeconds = 30, helpRequested = false) {
   if (helpRequested || errors >= DIAG_RULES.red.maxErrors || spentSeconds >= standardSeconds * DIAG_RULES.red.maxTimeMultiplier) {
     return 'red';
   }
@@ -43,13 +30,10 @@ export function getStepColor(errors, spentSeconds, standardSeconds, helpRequeste
   return 'green';
 }
 
-/**
- * To'liq diagnostika xulosasi tayyorlash (qoidalar asosida)
- * @param {object} studentData — {name, sid, steps: {stepN: {errors, time, help}}}
- * @returns {object} {skills, errors, strengths, weaknesses, aiText, color}
- */
-export function generateDiagnostic(studentData) {
-  const steps = studentData.steps || {};
+export function generateDiagnostic(studentData = {}) {
+  const steps = studentData?.steps || {};
+  const studentName = studentData?.name || "O'quvchi";
+  const studentSid = studentData?.sid || "guest";
   const stepIds = Object.keys(STEP_STANDARD_TIME);
 
   let totalErrors = 0;
@@ -107,12 +91,11 @@ export function generateDiagnostic(studentData) {
     .filter(([, v]) => v === 'low')
     .map(([k]) => k);
 
-  // AI matnli xulosa (shablon asosida, MVP)
-  const aiText = buildAIText(studentData.name, overallColor, strengths, weaknesses, errorsList);
+  const aiText = buildAIText(studentName, overallColor, strengths, weaknesses, errorsList);
 
   return {
-    sid: studentData.sid,
-    name: studentData.name,
+    sid: studentSid,
+    name: studentName,
     overallColor,
     totalErrors,
     avgTimeRatio,

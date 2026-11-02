@@ -40,6 +40,15 @@ const STEPS = [
   { id: 'step7', title: '7. Xulosa', icon: Save },
 ];
 
+const safeFormatText = (data) => {
+  if (!data) return '';
+  const textStr = typeof data === 'string' ? data : (data.text ? String(data.text) : JSON.stringify(data));
+  return textStr
+    .replace(/\n/g, '<br/>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-teal-300 font-bold">$1</strong>')
+    .replace(/\[\[(.*?)\]\]/g, '<span class="text-amber-300 font-bold">$1</span>');
+};
+
 export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFinish }) => {
   const [currentStep, setCurrentStep] = useState('step1');
   const [stepStartTime, setStepStartTime] = useState(Date.now());
@@ -110,7 +119,7 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
         conclusion
       });
 
-      if (result) {
+      if (result && typeof result === 'string') {
         setAiAnalysis(result);
       } else {
         generateFallbackAiAnalysis(stepToAnalyze);
@@ -188,21 +197,27 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
 
   // Generate Roadmap Modal & Infographic Image
   const handleFinalizeAndShowRoadmap = async (dataToDiag = stepData) => {
-    const diag = generateDiagnostic({ name: studentName, sid: studentSid, steps: dataToDiag });
-    setFinalDiag(diag);
-    setShowRoadmapModal(true);
-    setRoadmapLoading(true);
-
     try {
-      const roadmapTextFromAi = await generateLearningRoadmapAI(studentName, dataToDiag, diag);
-      if (roadmapTextFromAi) {
-        setRoadmapData(roadmapTextFromAi);
-      } else {
+      const diag = generateDiagnostic({ name: studentName, sid: studentSid, steps: dataToDiag });
+      setFinalDiag(diag);
+      setShowRoadmapModal(true);
+      setRoadmapLoading(true);
+
+      try {
+        const roadmapTextFromAi = await generateLearningRoadmapAI(studentName, dataToDiag, diag);
+        if (roadmapTextFromAi && typeof roadmapTextFromAi === 'string') {
+          setRoadmapData(roadmapTextFromAi);
+        } else {
+          setRoadmapData(null);
+        }
+      } catch (e) {
         setRoadmapData(null);
+      } finally {
+        setRoadmapLoading(false);
       }
     } catch (e) {
-      setRoadmapData(null);
-    } finally {
+      console.error("Roadmap generation error:", e);
+      setShowRoadmapModal(true);
       setRoadmapLoading(false);
     }
   };
@@ -345,7 +360,7 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
                 <Sparkles className="text-teal-400 flex-shrink-0 mt-0.5" size={20} />
                 <div className="text-xs sm:text-sm leading-relaxed text-slate-200">
                   <span className="font-bold text-teal-300 block mb-1">FizLab AI Ustoz Tushuntirishi:</span>
-                  <div dangerouslySetInnerHTML={{ __html: aiAnalysis.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                  <div dangerouslySetInnerHTML={{ __html: safeFormatText(aiAnalysis) }} />
                 </div>
               </div>
             </div>
@@ -728,7 +743,7 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
               </button>
             </div>
 
-            {/* AI Generated Image Viewer (If generated) */}
+            {/* AI Generated Image Viewer */}
             {infographicImg && (
               <div className="bg-slate-950 p-3 rounded-2xl border border-purple-500/40 text-center space-y-2 animate-fade-in">
                 <div className="relative rounded-xl overflow-hidden max-h-80 bg-slate-900 border border-slate-800">
@@ -896,11 +911,7 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
                   <h3 className="font-bold text-teal-300 text-sm flex items-center gap-2 mb-2">
                     <Sparkles size={16} /> AI Ustozning Aniq Tushuntirishi & Yo'riqnomasi:
                   </h3>
-                  <div dangerouslySetInnerHTML={{
-                    __html: roadmapData
-                      .replace(/\n/g, '<br/>')
-                      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-teal-300 font-bold">$1</strong>')
-                  }} />
+                  <div dangerouslySetInnerHTML={{ __html: safeFormatText(roadmapData) }} />
                 </div>
               )
             )}

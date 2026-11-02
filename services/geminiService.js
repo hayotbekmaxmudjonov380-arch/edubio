@@ -63,7 +63,6 @@ export const generateBioResponse = async (prompt, attachment) => {
   
   try {
     const model = 'gemini-2.5-flash'; 
-    
     const contentParts = [];
     
     if (attachment) {
@@ -82,7 +81,7 @@ export const generateBioResponse = async (prompt, attachment) => {
       },
     });
 
-    return response.text || "Kechirasiz, javobni shakllantira olmadim.";
+    return response.text ? String(response.text) : "Kechirasiz, javobni shakllantira olmadim.";
   } catch (error) {
     console.error("Gemini Error:", error);
     return "Xatolik yuz berdi. Internetni tekshiring yoki API kalitni yangilang.";
@@ -115,7 +114,7 @@ export const generatePhysicsResponse = async (prompt, attachment) => {
       },
     });
 
-    return response.text || "Kechirasiz, javobni shakllantira olmadim.";
+    return response.text ? String(response.text) : "Kechirasiz, javobni shakllantira olmadim.";
   } catch (error) {
     console.error("Gemini Physics Error:", error);
     return "Xatolik yuz berdi. Internetni tekshiring yoki API kalitni yangilang.";
@@ -140,7 +139,7 @@ Xulosa matni: "${conclusion || ''}"
 
 Vazifa: O'quvchining joriy bosqichdagi harakatlarini tahlil qiling.
 Agar xato bo'lsa (masalan: noto'g'ri asbob tanlangan, hisob xato, birlik xato), xatoning AYNAN SABABINI o'zbek tilida 2-3 ta gapda sodda va tushunarli qilib tushuntiring.
-Agar xato bo'lmasa, uni rag'batlantiring va keyingi mantiqiy qadamni ayting.
+Agar xato bo'lsa, uni rag'batlantiring va keyingi mantiqiy qadamni ayting.
     `;
 
     const response = await ai.models.generateContent({
@@ -152,7 +151,7 @@ Agar xato bo'lmasa, uni rag'batlantiring va keyingi mantiqiy qadamni ayting.
       },
     });
 
-    return response.text;
+    return response.text ? String(response.text) : null;
   } catch (error) {
     console.error("Realtime Lab Analysis Error:", error);
     return null;
@@ -195,7 +194,7 @@ Javobingizni quyidagi o'zbek tilidagi do'stona va aniq formatda yozing:
       },
     });
 
-    return response.text;
+    return response.text ? String(response.text) : null;
   } catch (error) {
     console.error("Roadmap Generation Error:", error);
     return null;
