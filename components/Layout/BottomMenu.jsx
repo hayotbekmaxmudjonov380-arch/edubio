@@ -1,16 +1,20 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, GraduationCap, Book, Sparkles } from 'lucide-react';
-
-// Sidebar bilan bir xil dizayn: qorong'i glass + emerald faol holat + oq nuqta indikator
-const links = [
-  { to: '/', label: 'Bosh sahifa', icon: Home },
-  { to: '/lessons', label: 'Darslar', icon: GraduationCap },
-  { to: '/library', label: 'Kutubxona', icon: Book },
-  { to: '/bio-ai', label: 'EduBio AI', icon: Sparkles },
-];
+import { useSystem, useSubject } from '../../context/SystemContext';
 
 export const BottomMenu = () => {
+  const system = useSystem();
+  const subject = useSubject();
+  const isAstronomy = system === 'institute' && subject?.id === 'astronomiya';
+
+  const links = [
+    { to: '/', label: 'Bosh sahifa', icon: Home },
+    { to: '/lessons', label: isAstronomy ? '3D Astronomiya' : 'Darslar', icon: GraduationCap },
+    { to: '/library', label: 'Kutubxona', icon: Book },
+    { to: '/bio-ai', label: 'EduBio AI', icon: Sparkles },
+  ];
+
   return (
     <div className="fixed bottom-3 left-0 right-0 flex justify-center z-50 px-2.5 lg:hidden pointer-events-none">
       <style>{`

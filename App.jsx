@@ -7,6 +7,8 @@ import { BioAiPage } from './pages/BioAiPage';
 import { LessonsPage } from './pages/LessonsPage';
 import { LoginPage } from './pages/LoginPage';
 import { SubjectPicker } from './pages/SubjectPicker';
+import { FizLabLab } from './modules/fizlab/FizLabLab';
+import { FizLabTeacher } from './modules/fizlab/FizLabTeacher';
 import { SystemProvider, SubjectProvider } from './context/SystemContext';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -85,6 +87,18 @@ export default function App() {
     localStorage.removeItem('eduSubject');
   };
 
+  // FizLab AI lab tugaganda diagnostika natijasini qabul qilish
+  const handleLabFinish = (diagnostic) => {
+    if (!diagnostic) {
+      // Orqaga qaytildi
+      return;
+    }
+    console.log("FizLab diagnostika:", diagnostic);
+    alert(
+      `Diagnostika yakunlandi!\n\nIsm: ${diagnostic.name}\nRang: ${diagnostic.overallColor}\nXatolar: ${diagnostic.totalErrors}\n\n${diagnostic.aiText}`
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -122,6 +136,25 @@ export default function App() {
             <Route path="lessons" element={<LessonsPage />} />
             <Route path="library" element={<LibraryPage />} />
             <Route path="bio-ai" element={<BioAiPage />} />
+            {/* FizLab AI — faqat Institut → Fizika bo'limida */}
+            {system === 'institute' && subject?.id === 'fizika' && (
+              <>
+                <Route
+                  path="fizlab-lab"
+                  element={
+                    <FizLabLab
+                      studentName={user?.displayName || "O'quvchi"}
+                      studentSid={user?.uid || 'guest-student'}
+                      onFinish={handleLabFinish}
+                    />
+                  }
+                />
+                <Route
+                  path="fizlab-teacher"
+                  element={<FizLabTeacher onBack={handleBackToLogin} />}
+                />
+              </>
+            )}
           </Route>
           {/* Noto'g'ri manzillar uchun qayta yo'naltirish */}
           <Route path="*" element={<Navigate to="/" replace />} />

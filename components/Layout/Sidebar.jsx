@@ -1,15 +1,25 @@
-
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { X, Home, Book, Sparkles, GraduationCap, Hexagon, Dna, FlaskConical, Atom } from 'lucide-react';
+import { X, Home, Book, Sparkles, GraduationCap, Hexagon, Dna, FlaskConical, Atom, Users } from 'lucide-react';
 import { useSystem, useSubject } from '../../context/SystemContext';
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const system = useSystem();
   const subject = useSubject();
+  const isPhysics = system === 'institute' && subject?.id === 'fizika';
+  const isAstronomy = system === 'institute' && subject?.id === 'astronomiya';
+
+  const lessonsLabel = isAstronomy ? '3D Astronomiya' : 'Darslar';
+
   const links = [
     { to: '/', label: 'Bosh sahifa', icon: Home },
-    { to: '/lessons', label: 'Darslar', icon: GraduationCap },
+    { to: '/lessons', label: lessonsLabel, icon: GraduationCap },
+    ...(isPhysics
+      ? [
+          { to: '/fizlab-lab', label: 'FizLab Laboratoriya', icon: Atom },
+          { to: '/fizlab-teacher', label: "O'qituvchi paneli", icon: Users },
+        ]
+      : []),
     { to: '/library', label: 'Kutubxona', icon: Book },
     { to: '/bio-ai', label: 'EduBio AI', icon: Sparkles },
   ];
