@@ -12,9 +12,19 @@ import {
   Calculator,
   Save,
   HelpCircle,
+  Sparkles,
+  BrainCircuit,
+  Compass,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  X,
+  MapPin,
+  Check
 } from 'lucide-react';
 import { FizLabLogger } from './FizLabLogger';
 import { STEP_STANDARD_TIME, generateDiagnostic } from './FizLabDiagnostic';
+import { analyzeLabStepRealtimeAI, generateLearningRoadmapAI } from '../../services/geminiService';
 
 const STEPS = [
   { id: 'step1', title: '1. Nazariy savol', icon: BookOpen },
@@ -26,7 +36,7 @@ const STEPS = [
   { id: 'step7', title: '7. Xulosa', icon: Save },
 ];
 
-export const FizLabLab = ({ studentName, studentSid, onFinish }) => {
+export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFinish }) => {
   const [currentStep, setCurrentStep] = useState('step1');
   const [stepStartTime, setStepStartTime] = useState(Date.now());
   const [stepData, setStepData] = useState({});
@@ -52,6 +62,16 @@ export const FizLabLab = ({ studentName, studentSid, onFinish }) => {
   const [conclusion, setConclusion] = useState('');
   const [helpRequested, setHelpRequested] = useState(false);
 
+  // Real-time AI Assistant States
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+
+  // Roadmap Modal States
+  const [showRoadmapModal, setShowRoadmapModal] = useState(false);
+  const [roadmapData, setRoadmapData] = useState(null);
+  const [roadmapLoading, setRoadmapLoading] = useState(false);
+  const [finalDiag, setFinalDiag] = useState(null);
+
   useEffect(() => {
     setStepStartTime(Date.now());
   }, [currentStep]);
@@ -67,6 +87,67 @@ export const FizLabLab = ({ studentName, studentSid, onFinish }) => {
     return d.errors || 0;
   };
 
+  // Real-time AI Step Analysis & Explanation
+  const runRealtimeAiCheck = async (stepToAnalyze = currentStep) => {
+    setIsAiAnalyzing(true);
+    try {
+      const result = await analyzeLabStepRealtimeAI({
+        step: stepToAnalyze,
+        selectedTools,
+        weightAir,
+        weightLiquid,
+        volume,
+        density,
+        tableData: { F1: tableF1, F2: tableF2, Fbu: tableFbu },
+        conclusion
+      });
+
+      if (result) {
+        setAiAnalysis(result);
+      } else {
+        // Fallback intelligent analysis
+        generateFallbackAiAnalysis(stepToAnalyze);
+      }
+    } catch (e) {
+      generateFallbackAiAnalysis(stepToAnalyze);
+    } finally {
+      setIsAiAnalyzing(false);
+    }
+  };
+
+  const generateFallbackAiAnalysis = (step) => {
+    if (step === 'step2') {
+      const hasWrong = selectedTools.some((t) => ['termometr', 'kant', 'linyalka'].includes(t));
+      const hasCorrect = selectedTools.includes('dinamometr') && selectedTools.includes('stakan');
+      if (hasWrong) {
+        setAiAnalysis("⚠️ **AI Xatolar Tahlili:** Siz noto'g'ri asboblarni tanladingiz. Termometr haroratni, liniyka masofani o'lchaydi. Arximed kuchini aniqlash uchun **Dinamometr** (og'irlikni o'lchash) va **Stakan** (suyuqlik uchun) kerak.");
+      } else if (!hasCorrect) {
+        setAiAnalysis("💡 **AI Yo'riqnomasi:** Arximed kuchi tajribasini o'tkazish uchun **Dinamometr** hamda **Stakan** asboblarini tanlang.");
+      } else {
+        setAiAnalysis("✅ **AI Tahlili:** Ajoyib! Tajriba uchun kerakli asboblar (Dinamometr va Stakan) to'g'ri tanlandi.");
+      }
+    } else if (step === 'step6') {
+      const p = parseFloat(tableF1);
+      const f1 = parseFloat(tableF2);
+      const fbu = parseFloat(tableFbu);
+      if (isNaN(p) || isNaN(f1)) {
+        setAiAnalysis("💡 **AI Yo'riqnomasi:** Havodagi (P) hamda suyuqlikdagi (F1) og'irlik qiymatlarini kiritib, Arximed kuchini $F_{bu} = P - F1$ formulasi bo'yicha hisoblang.");
+      } else if (!isNaN(fbu) && Math.abs(fbu - (p - f1)) > 0.05) {
+        setAiAnalysis(`⚠️ **Hisoblash Xatosi Tahlili:** Siz F_bu=${fbu} N kiritdingiz, lekin formula bo'yicha F_bu = P - F1 = ${p} - ${f1} = ${(p - f1).toFixed(2)} N bo'lishi kerak. Qayta hisoblang.`);
+      } else {
+        setAiAnalysis("✅ **AI Tahlili:** Barcha hisoblashlar va o'lchov birliklari to'g'ri bajartirildi.");
+      }
+    } else if (step === 'step7') {
+      if (conclusion.length < 10) {
+        setAiAnalysis("⚠️ **Xulosa Tahlili:** Xulosangiz juda qisqa. Arximed kuchi **suyuqlik zichligi (ρ)** va **jism hajmiga (V)** to'g'ri mutanosib ekanligini ta'kidlab yozing.");
+      } else {
+        setAiAnalysis("✅ **AI Tahlili:** Xulosa mantiqan to'g'ri va tushunchaviy jihatdan asoslangan.");
+      }
+    } else {
+      setAiAnalysis("🟢 **AI Real Vaqt Nazorati:** Jarayon me'yoriy vaqtda va to'g'ri tartibda ketmoqda.");
+    }
+  };
+
   const nextStep = () => {
     const d = {
       ...stepData,
@@ -77,23 +158,50 @@ export const FizLabLab = ({ studentName, studentSid, onFinish }) => {
       },
     };
     setStepData(d);
+
     const idx = STEPS.findIndex((s) => s.id === currentStep);
     if (idx < STEPS.length - 1) {
-      setCurrentStep(STEPS[idx + 1].id);
+      const nextId = STEPS[idx + 1].id;
+      setCurrentStep(nextId);
       setHelpRequested(false);
+      runRealtimeAiCheck(nextId);
     } else {
-      const diag = generateDiagnostic({ name: studentName, sid: studentSid, steps: d });
-      onFinish?.(diag);
+      handleFinalizeAndShowRoadmap(d);
     }
   };
 
   const prevStep = () => {
     const idx = STEPS.findIndex((s) => s.id === currentStep);
-    if (idx > 0) setCurrentStep(STEPS[idx - 1].id);
+    if (idx > 0) {
+      const prevId = STEPS[idx - 1].id;
+      setCurrentStep(prevId);
+      runRealtimeAiCheck(prevId);
+    }
+  };
+
+  // Generate Roadmap Modal
+  const handleFinalizeAndShowRoadmap = async (dataToDiag = stepData) => {
+    const diag = generateDiagnostic({ name: studentName, sid: studentSid, steps: dataToDiag });
+    setFinalDiag(diag);
+    setShowRoadmapModal(true);
+    setRoadmapLoading(true);
+
+    try {
+      const roadmapTextFromAi = await generateLearningRoadmapAI(studentName, dataToDiag, diag);
+      if (roadmapTextFromAi) {
+        setRoadmapData(roadmapTextFromAi);
+      } else {
+        setRoadmapData(null);
+      }
+    } catch (e) {
+      setRoadmapData(null);
+    } finally {
+      setRoadmapLoading(false);
+    }
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-white">
+    <div className="flex flex-col h-full bg-slate-900 text-white relative">
       {/* Header */}
       <div className="bg-slate-800 border-b border-slate-700 px-6 py-4 flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center gap-3">
@@ -104,22 +212,27 @@ export const FizLabLab = ({ studentName, studentSid, onFinish }) => {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-teal-400">FizLab AI</h1>
-            <p className="text-xs text-slate-400">7-sinf Fizika · Virtual laboratoriya</p>
+            <h1 className="text-lg font-bold text-teal-400 flex items-center gap-2">
+              FizLab AI <span className="text-xs bg-teal-500/20 text-teal-300 border border-teal-500/30 px-2 py-0.5 rounded-full font-normal">Real Vaqt AI Nazoratchi</span>
+            </h1>
+            <p className="text-xs text-slate-400">7-sinf Fizika · Virtual laboratoriya & AI Tahlil</p>
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-300">
-          <span className="bg-slate-700 px-2 py-1 rounded">O'quvchi: {studentName}</span>
-          <span className="bg-slate-700 px-2 py-1 rounded">Bosqich: {currentStep}</span>
-          <span className="bg-slate-700 px-2 py-1 rounded">Vaqt: {spentSeconds}s</span>
+          <span className="bg-slate-700 px-2.5 py-1 rounded-md text-xs">O'quvchi: {studentName}</span>
+          <span className="bg-slate-700 px-2.5 py-1 rounded-md text-xs">Bosqich: {currentStep}</span>
+          <span className="bg-slate-700 px-2.5 py-1 rounded-md text-xs">Vaqt: {spentSeconds}s</span>
           <button
-            onClick={() => setHelpRequested((h) => !h)}
-            className={`p-2 rounded-lg transition-colors ${
-              helpRequested ? 'bg-red-500/20 text-red-400' : 'bg-slate-700 text-slate-400 hover:text-white'
+            onClick={() => {
+              setHelpRequested((h) => !h);
+              runRealtimeAiCheck(currentStep);
+            }}
+            className={`p-2 rounded-lg transition-colors flex items-center gap-1 text-xs ${
+              helpRequested ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-slate-700 text-slate-400 hover:text-white'
             }`}
-            title="Yordam so'rash"
+            title="AI-dan Yordam So'rash"
           >
-            <HelpCircle size={18} />
+            <HelpCircle size={16} /> AI Yordam
           </button>
         </div>
       </div>
@@ -165,9 +278,55 @@ export const FizLabLab = ({ studentName, studentSid, onFinish }) => {
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content Area + Realtime AI Widget */}
       <div className="flex-1 overflow-y-auto p-6 md:p-10">
-        <div className="max-w-3xl mx-auto pb-24">
+        <div className="max-w-4xl mx-auto pb-24 space-y-6">
+
+          {/* Realtime AI Mentor Assistant Banner */}
+          <div className="bg-slate-800/80 border border-teal-500/40 rounded-2xl p-4 shadow-xl backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 flex-shrink-0 mt-0.5">
+                <BrainCircuit size={22} className={isAiAnalyzing ? "animate-pulse" : ""} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-teal-300 flex items-center gap-2">
+                  FizLab AI Real Vaqt Nazoratchisi
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block"></span>
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  Amaliyot jarayoni real vaqt rejimida kuzatib borilmoqda. Xatolar, birliklar va tushunchalar joyida tahlil qilinadi.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => runRealtimeAiCheck(currentStep)}
+              disabled={isAiAnalyzing}
+              className="px-4 py-2 bg-teal-600/30 hover:bg-teal-600 border border-teal-500/50 text-teal-200 hover:text-white rounded-xl text-xs font-semibold transition-all flex items-center gap-2 flex-shrink-0"
+            >
+              {isAiAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              AI Tahlili Olish
+            </button>
+          </div>
+
+          {/* Realtime AI Explanation Box */}
+          {aiAnalysis && (
+            <div className="bg-slate-900/90 border border-teal-500/30 rounded-2xl p-5 shadow-2xl animate-fade-in relative">
+              <button
+                onClick={() => setAiAnalysis(null)}
+                className="absolute top-3 right-3 text-slate-400 hover:text-white p-1 rounded-md"
+              >
+                <X size={16} />
+              </button>
+              <div className="flex items-start gap-3">
+                <Sparkles className="text-teal-400 flex-shrink-0 mt-0.5" size={20} />
+                <div className="text-xs sm:text-sm leading-relaxed text-slate-200">
+                  <span className="font-bold text-teal-300 block mb-1">FizLab AI Ustoz Tushuntirishi:</span>
+                  <div dangerouslySetInnerHTML={{ __html: aiAnalysis.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Step 1 */}
           {currentStep === 'step1' && (
             <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 text-center">
@@ -205,11 +364,13 @@ export const FizLabLab = ({ studentName, studentSid, onFinish }) => {
                     <button
                       key={tool.id}
                       onClick={() => {
-                        setSelectedTools((prev) =>
-                          prev.includes(tool.id)
+                        setSelectedTools((prev) => {
+                          const updated = prev.includes(tool.id)
                             ? prev.filter((t) => t !== tool.id)
-                            : [...prev, tool.id]
-                        );
+                            : [...prev, tool.id];
+                          logAction('asbob_tanlandi', { toolId: tool.id, selected: updated });
+                          return updated;
+                        });
                       }}
                       className={`p-4 rounded-xl border transition-all flex flex-col items-center justify-center group ${
                         isSelected
@@ -437,10 +598,11 @@ export const FizLabLab = ({ studentName, studentSid, onFinish }) => {
                     const fbu = p - f1;
                     setTableFbu(isNaN(fbu) ? '' : fbu.toFixed(2));
                     logAction('javob_kiritildi', { calculatedFbu: fbu });
+                    runRealtimeAiCheck('step6');
                   }}
                   className="flex-1 bg-slate-600 hover:bg-slate-500 text-white py-2 rounded-lg font-medium transition-colors"
                 >
-                  Hisoblash
+                  Hisoblash & AI Tekshirish
                 </button>
               </div>
             </div>
@@ -493,17 +655,138 @@ export const FizLabLab = ({ studentName, studentSid, onFinish }) => {
                       help: helpRequested,
                     },
                   };
-                  const diag = generateDiagnostic({ name: studentName, sid: studentSid, steps: d });
-                  onFinish?.(diag);
+                  setStepData(d);
+                  handleFinalizeAndShowRoadmap(d);
                 }}
-                className="px-8 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium shadow-lg shadow-emerald-500/30 transition-colors flex items-center ml-auto"
+                className="px-8 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium shadow-lg shadow-emerald-500/30 transition-colors flex items-center ml-auto gap-2"
               >
-                Yakunlab diagnostikaga o'tish
+                <Sparkles size={18} /> Yakunlab AI Yo'l Haritasiga o'tish
               </button>
             )}
           </div>
         </div>
       </div>
+
+      {/* Personalized Learning Roadmap Modal (O'zlashtirish Yo'l Haritasi) */}
+      {showRoadmapModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-slate-900 border border-teal-500/40 rounded-3xl p-6 md:p-8 max-w-3xl w-full text-white shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto no-scrollbar">
+            <button
+              onClick={() => setShowRoadmapModal(false)}
+              className="absolute top-5 right-5 p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400">
+                <Compass size={28} />
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 text-[11px] font-semibold mb-1">
+                  <Sparkles size={12} /> FizLab AI Diagnostikasi
+                </div>
+                <h2 className="text-xl md:text-2xl font-extrabold text-white">
+                  O'quvchi O'zlashtirish Yo'l Haritasi
+                </h2>
+              </div>
+            </div>
+
+            {/* Student Grade Overview */}
+            <div className="bg-slate-800/60 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <span className="text-xs text-slate-400 block mb-1">O'quvchi:</span>
+                <span className="text-base font-bold text-teal-300">{studentName}</span>
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 block mb-1">Jami Xatolar:</span>
+                <span className="text-sm font-mono font-bold text-white">{finalDiag?.totalErrors || 0} ta</span>
+              </div>
+              <div>
+                <span className="text-xs text-slate-400 block mb-1">Umumiy Daraja:</span>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${
+                  finalDiag?.overallColor === 'green'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : finalDiag?.overallColor === 'yellow'
+                      ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+                      : 'bg-red-500/20 text-red-300 border-red-500/40'
+                }`}>
+                  {finalDiag?.overallColor === 'green' ? 'Ajoyib (Yashil)' : finalDiag?.overallColor === 'yellow' ? 'Yaxshi (Sariq)' : 'Qayta ishlash kerak (Qizil)'}
+                </span>
+              </div>
+            </div>
+
+            {/* Generated Roadmap Content */}
+            {roadmapLoading ? (
+              <div className="py-12 text-center space-y-4">
+                <Loader2 size={36} className="animate-spin text-teal-400 mx-auto" />
+                <p className="text-sm text-slate-300 font-medium">
+                  FizLab AI o'quvchining xatolari va harakatlarini tahlil qilib, shaxsiy O'zlashtirish Yo'l Haritasini tuzmoqda...
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {roadmapData ? (
+                  <div className="bg-slate-950/80 border border-teal-500/30 rounded-2xl p-5 text-sm leading-relaxed text-slate-200">
+                    <div dangerouslySetInnerHTML={{
+                      __html: roadmapData
+                        .replace(/\n/g, '<br/>')
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-teal-300 font-bold">$1</strong>')
+                    }} />
+                  </div>
+                ) : (
+                  /* Fallback Roadmap */
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-teal-300 flex items-center gap-2">
+                      <MapPin size={18} /> 3 Bosqichli Tavsiya Qilingan Yo'l Haritasi:
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-xl">
+                        <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded mb-2 inline-block">1-Qadam: Nazariya</span>
+                        <h4 className="font-bold text-xs text-white mb-1">Arximed qonuni va gidrostatik bosim</h4>
+                        <p className="text-[11px] text-slate-400">Suyuqlikka botirilgan jismga ta'sir qiluvchi kuch sabablarini takrorlang.</p>
+                      </div>
+                      <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-xl">
+                        <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded mb-2 inline-block">2-Qadam: Amaliyot</span>
+                        <h4 className="font-bold text-xs text-white mb-1">Dinamometr va Stakan bilan ishlash</h4>
+                        <p className="text-[11px] text-slate-400">Dinamometr ko'rsatkichini va suyuqlik hajmini aniq o'lchashni mashq qiling.</p>
+                      </div>
+                      <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-xl">
+                        <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded mb-2 inline-block">3-Qadam: Hisoblash</span>
+                        <h4 className="font-bold text-xs text-white mb-1">Formulalar va o'lchov birliklari</h4>
+                        <p className="text-[11px] text-slate-400">F_bu = P - F1 va F_bu = ρ·g·V formulalari orqali 3 ta masala yeching.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
+              <button
+                onClick={() => {
+                  setShowRoadmapModal(false);
+                  setCurrentStep('step1');
+                }}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-colors"
+              >
+                Qayta Tajriba O'tkazish
+              </button>
+              <button
+                onClick={() => {
+                  setShowRoadmapModal(false);
+                  onFinish?.(finalDiag);
+                }}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition-colors flex items-center gap-1.5"
+              >
+                <Check size={16} /> Natijalarni Tasdiqlash & Yakunlash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

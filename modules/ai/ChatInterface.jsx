@@ -1,7 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Image as ImageIcon, Volume2, Loader2, Sparkles, Mic, X, MicOff, Paperclip, FileText, FileSpreadsheet, File as FileIcon } from 'lucide-react';
-import { generateBioResponse, generateBioImage, generateSpeech } from '../../services/geminiService';
+import { Send, Image as ImageIcon, Volume2, Loader2, Sparkles, Mic, X, MicOff, Paperclip, FileText, FileSpreadsheet, File as FileIcon, Atom } from 'lucide-react';
+import { generateBioResponse, generatePhysicsResponse, generateBioImage, generateSpeech } from '../../services/geminiService';
+import { useSystem, useSubject } from '../../context/SystemContext';
 
 // --- Voice Mode Component ---
 const VoiceOverlay = ({ onClose, onSend, isProcessing, isPlayingAudio }) => {
@@ -31,7 +31,6 @@ const VoiceOverlay = ({ onClose, onSend, isProcessing, isPlayingAudio }) => {
 
         // Auto-send logic: detect silence
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-        // Changed from 2000ms to 1000ms for faster response
         silenceTimerRef.current = setTimeout(() => {
           if (interimTranscript.trim().length > 0) {
             recog.stop();
@@ -47,6 +46,9 @@ const VoiceOverlay = ({ onClose, onSend, isProcessing, isPlayingAudio }) => {
 
       recognitionRef.current = recog;
       recog.start(); // Auto-start
+    } else {
+      alert("Sizning brauzeringizda ovozli kiritish qo'llab-quvvatlanmaydi (Chrome ishlatib ko'ring).");
+      onClose();
     }
 
     return () => {
@@ -55,150 +57,111 @@ const VoiceOverlay = ({ onClose, onSend, isProcessing, isPlayingAudio }) => {
     };
   }, []);
 
-  const toggleMic = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-    } else {
-      recognitionRef.current?.start();
-    }
-  };
-
-  // Determine Visual State
-  let visualState = 'idle'; // idle, listening, processing, speaking
-  if (isProcessing) visualState = 'processing';
-  else if (isPlayingAudio) visualState = 'speaking';
-  else if (isListening) visualState = 'listening';
-
   return (
-    <div className="absolute inset-0 z-50 bg-[#0a0a0a]/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-fade-in">
-      {/* Top Controls */}
-      <div className="absolute top-6 right-6">
+    <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-between p-8 text-white animate-fade-in">
+      <div className="w-full flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <Sparkles className="text-emerald-400 animate-pulse" size={20} />
+          <span className="font-semibold text-sm tracking-wide text-gray-300">Ovozli Rejim</span>
+        </div>
         <button 
           onClick={onClose}
-          className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all"
+          className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
       </div>
 
-      {/* Main Visualizer (The Orb) */}
-      <div className="relative flex items-center justify-center mb-12">
-        {/* Glow Effects */}
-        <div className={`absolute inset-0 rounded-full blur-3xl transition-all duration-700 ${
-          visualState === 'listening' ? 'bg-orange-500/30 scale-150' : 
-          visualState === 'speaking' ? 'bg-emerald-500/40 scale-125' : 
-          visualState === 'processing' ? 'bg-blue-500/30 scale-110' :
-          'bg-emerald-500/10 scale-100'
-        }`}></div>
-
-        {/* The Core Orb */}
-        <div className={`w-40 h-40 rounded-full flex items-center justify-center relative shadow-2xl transition-all duration-500 ${
-          visualState === 'listening' ? 'bg-gradient-to-br from-orange-500 to-red-600 scale-110 shadow-orange-500/50' :
-          visualState === 'speaking' ? 'bg-gradient-to-br from-emerald-400 to-cyan-500 animate-pulse-slow shadow-emerald-500/50' :
-          visualState === 'processing' ? 'bg-gradient-to-br from-blue-400 to-indigo-500 animate-spin-slow shadow-blue-500/50' :
-          'bg-gradient-to-br from-gray-800 to-gray-700'
-        }`}>
-          {visualState === 'listening' && <Mic size={48} className="text-white animate-bounce" />}
-          {visualState === 'speaking' && <Volume2 size={48} className="text-white" />}
-          {visualState === 'processing' && <Loader2 size={48} className="text-white animate-spin" />}
-          {visualState === 'idle' && <MicOff size={48} className="text-gray-400" />}
+      <div className="flex flex-col items-center justify-center gap-8 my-auto">
+        <div className="relative">
+          <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500 ${
+            isPlayingAudio
+              ? 'bg-emerald-500/30 scale-110 shadow-[0_0_50px_rgba(16,185,129,0.5)]'
+              : isListening
+                ? 'bg-emerald-600/40 scale-100 shadow-[0_0_30px_rgba(16,185,129,0.3)] animate-pulse'
+                : 'bg-slate-800'
+          }`}>
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-colors ${
+              isPlayingAudio ? 'bg-emerald-500' : isListening ? 'bg-emerald-600' : 'bg-slate-700'
+            }`}>
+              {isProcessing ? (
+                <Loader2 className="animate-spin text-white" size={40} />
+              ) : isPlayingAudio ? (
+                <Volume2 className="animate-bounce text-white" size={40} />
+              ) : (
+                <Mic className="text-white" size={40} />
+              )}
+            </div>
+          </div>
+          {isListening && !isProcessing && !isPlayingAudio && (
+            <div className="absolute -inset-4 rounded-full border-2 border-emerald-500/50 animate-ping pointer-events-none" />
+          )}
         </div>
-        
-        {/* Ripple Rings for Listening */}
-        {visualState === 'listening' && (
-           <>
-             <div className="absolute w-40 h-40 border-2 border-orange-500/50 rounded-full animate-ping"></div>
-             <div className="absolute w-40 h-40 border border-orange-500/30 rounded-full animate-ping delay-100"></div>
-           </>
-        )}
+
+        <div className="text-center max-w-md">
+          <p className="text-lg font-medium mb-2 min-h-[28px] text-emerald-300">
+            {isPlayingAudio
+              ? "EduBio AI gapirmoqda..."
+              : isProcessing
+                ? "O'ylanmoqda..."
+                : transcript
+                  ? `"${transcript}"`
+                  : "Sizni eshitmoqdaman, gapiring..."}
+          </p>
+          <p className="text-xs text-gray-400">
+            {isPlayingAudio
+              ? "Ovozli javob berilmoqda"
+              : "Gapirib bo'lganingizdan so'ng avtomatik yuboriladi"}
+          </p>
+        </div>
       </div>
 
-      {/* Text Feedback */}
-      <div className="text-center max-w-lg min-h-[80px]">
-        {visualState === 'listening' && (
-          <>
-            <p className="text-white/60 text-sm mb-2 uppercase tracking-widest font-bold">Eshitilmoqda...</p>
-            <p className="text-2xl font-light text-white">{transcript || "Gapiring..."}</p>
-          </>
-        )}
-        {visualState === 'processing' && (
-          <p className="text-emerald-400 text-xl animate-pulse">Javob tayyorlanmoqda...</p>
-        )}
-        {visualState === 'speaking' && (
-          <p className="text-white/80 text-xl">EduBio AI gapirmoqda...</p>
-        )}
-        {visualState === 'idle' && (
-           <p className="text-white/40">Mikrofon o'chiq. Gapirish uchun tugmani bosing.</p>
-        )}
-      </div>
-
-      {/* Bottom Controls */}
-      <div className="mt-12 flex items-center gap-6">
+      <div className="flex items-center gap-4">
         <button 
-          onClick={toggleMic}
-          className={`p-6 rounded-full transition-all duration-300 transform hover:scale-105 ${
-            isListening 
-            ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/40' 
-            : 'bg-[#2a2a2a] text-emerald-500 hover:bg-[#333]'
-          }`}
+          onClick={onClose}
+          className="px-6 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-full font-medium text-sm transition-colors border border-red-500/30"
         >
-          {isListening ? <Mic size={32} /> : <MicOff size={32} />}
+          Ovozli rejimdan chiqish
         </button>
       </div>
     </div>
   );
 };
 
-// --- Helper for File Conversion ---
-const fileToGenerativePart = async (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result;
-      // Remove data url prefix (e.g. "data:image/jpeg;base64," or "data:application/pdf;base64,")
-      const base64Data = base64String.split(',')[1];
-      resolve({
-        data: base64Data,
-        mimeType: file.type,
-      });
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
-
-// --- Helper for File Icons ---
-const getFileIcon = (fileName) => {
-  const ext = fileName.split('.').pop()?.toLowerCase();
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || '')) return <ImageIcon size={20} className="text-purple-400" />;
-  if (['pdf'].includes(ext || '')) return <FileText size={20} className="text-red-400" />;
-  if (['xls', 'xlsx', 'csv'].includes(ext || '')) return <FileSpreadsheet size={20} className="text-green-400" />;
-  if (['doc', 'docx', 'txt'].includes(ext || '')) return <FileText size={20} className="text-blue-400" />;
-  return <FileIcon size={20} className="text-gray-400" />;
-};
-
-// --- Main Chat Interface ---
-
 export const ChatInterface = () => {
+  const system = useSystem();
+  const subject = useSubject();
+  const isPhysics = system === 'institute' && subject?.id === 'fizika';
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const samplePrompts = [
-    "Fotosintez jarayoni bosqichlarini tushuntirib bera olasizmi?",
-    "Hayvonlarda qon aylanishi qanday ishlaydi?",
-    "O'simlik hujayrasi bilan hayvon hujayrasi farqi nimada?",
-    "DNK va RNK ning asosiy vazifalari nimalardan iborat?"
-  ];
+  const [isVoiceOverlayOpen, setIsVoiceOverlayOpen] = useState(false);
   
-  // File Upload State
+  // File Upload States
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
-  
+
   const messagesEndRef = useRef(null);
   const audioContextRef = useRef(null);
+
+  const bioSamplePrompts = [
+    "O'simlik va hayvon hujayrasining farqi nima?",
+    "Fotosintez jarayoni haqida qisqacha tushuntiring",
+    "DNK va RNK o'rtasidagi asosiy tafovutlar",
+    "Botanika fanining ahamiyati nimada?"
+  ];
+
+  const physicsSamplePrompts = [
+    "Arximed kuchi va uning formulasi haqida tushuntirib ber",
+    "Virtual laboratoriyada qanday xatolik qilganimni tahlil qilib ber",
+    "Arximed kuchi bo'yicha o'zlashtirish yo'l haritasini tuzib ber",
+    "Dinamometr va stakan yordamida og'irlikni qanday o'lchayman?"
+  ];
+
+  const samplePrompts = isPhysics ? physicsSamplePrompts : bioSamplePrompts;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -209,20 +172,16 @@ export const ChatInterface = () => {
   const handleFileSelect = (event) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate size (e.g., max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         alert("Fayl hajmi 10MB dan oshmasligi kerak.");
         return;
       }
-
       setSelectedFile(file);
-      
-      // If it's an image, create a preview URL
       if (file.type.startsWith('image/')) {
         const url = URL.createObjectURL(file);
         setPreviewUrl(url);
       } else {
-        setPreviewUrl(null); // No visual preview for docs, we show icon
+        setPreviewUrl(null);
       }
     }
   };
@@ -236,18 +195,15 @@ export const ChatInterface = () => {
 
   const handleSend = async (textInput) => {
     const contentToSend = textInput || input;
-    // Allow sending if there is a file, even if text is empty
     if ((!contentToSend.trim() && !selectedFile) || isLoading) return;
 
-    // Create User Message
     const userMsg = {
       id: Date.now().toString(),
       role: 'user',
       content: contentToSend,
       timestamp: new Date(),
       type: 'text',
-      // If image, show it. If doc, we can render a file card in the message history logic
-      imageUrl: previewUrl || undefined 
+      imageUrl: previewUrl || undefined
     };
 
     setMessages(prev => [...prev, {
@@ -258,7 +214,6 @@ export const ChatInterface = () => {
     setInput('');
     setIsLoading(true);
     
-    // Store file ref to send, then clear state
     const fileToSend = selectedFile;
     clearSelectedFile(); 
 
@@ -267,28 +222,30 @@ export const ChatInterface = () => {
       let responseText = '';
       let generatedImageUrl = undefined;
 
-      // Handle Attachment (Image or Doc)
       if (fileToSend) {
         const filePart = await fileToGenerativePart(fileToSend);
-        // Pass generic attachment
-        responseText = await generateBioResponse(userMsg.content, filePart);
+        responseText = isPhysics
+          ? await generatePhysicsResponse(userMsg.content, filePart)
+          : await generateBioResponse(userMsg.content, filePart);
       } 
-      // Handle Image Generation Request
       else if (lowerInput.includes('rasm chiz') || lowerInput.includes('create image') || lowerInput.includes('ko\'rsat')) {
         const imgUrl = await generateBioImage(userMsg.content);
         if (imgUrl) {
           generatedImageUrl = imgUrl;
-          responseText = "Mana siz so'ragan rasm:";
+          responseText = "Mana siz so'ragan rasmli tasvir:";
         } else {
-          responseText = await generateBioResponse(userMsg.content);
+          responseText = isPhysics
+            ? await generatePhysicsResponse(userMsg.content)
+            : await generateBioResponse(userMsg.content);
         }
       } 
-      // Handle Standard Text
       else {
-        responseText = await generateBioResponse(userMsg.content);
+        responseText = isPhysics
+          ? await generatePhysicsResponse(userMsg.content)
+          : await generateBioResponse(userMsg.content);
       }
 
-      const aiMsg = {
+      const botMsg = {
         id: (Date.now() + 1).toString(),
         role: 'model',
         content: responseText,
@@ -297,155 +254,94 @@ export const ChatInterface = () => {
         imageUrl: generatedImageUrl
       };
 
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages(prev => [...prev, botMsg]);
 
-      // If in voice mode, automatically play audio
-      if (isVoiceMode) {
-        playTTS(responseText);
+      if (isVoiceOverlayOpen) {
+        playAudioResponse(responseText);
       }
 
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error("Chat Error:", error);
       setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'model',
-          content: "Kechirasiz, xatolik yuz berdi. Iltimos qayta urinib ko'ring.",
-          timestamp: new Date(),
-          type: 'text'
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        content: "Xatolik yuz berdi. Iltimos, ma'lum vaqtdan so'ng qayta urinib ko'ring.",
+        timestamp: new Date(),
+        type: 'text'
       }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSamplePrompt = (prompt) => {
-    if (isLoading) return;
-    handleSend(prompt);
-  };
-
-  const playTTS = async (text) => {
-    if (isPlayingAudio) return;
-    setIsPlayingAudio(true);
-    
+  const playAudioResponse = async (text) => {
     try {
-      // Clean text for speech if needed, but TTS generally handles some symbols well. 
-      // The output text is already cleaned visually, but we pass raw text to TTS usually.
-      const rawAudioBuffer = await generateSpeech(text);
-      if (rawAudioBuffer) {
+      setIsPlayingAudio(true);
+      const audioBufferData = await generateSpeech(text);
+      if (audioBufferData) {
         if (!audioContextRef.current) {
-          // Initialize AudioContext if not already done
+          // @ts-ignore
           audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
         }
-        
         const ctx = audioContextRef.current;
-        
-        // --- MANUAL PCM DECODING ---
-        const pcmData = new Int16Array(rawAudioBuffer);
-        const floatData = new Float32Array(pcmData.length);
-        
-        for (let i = 0; i < pcmData.length; i++) {
-          floatData[i] = pcmData[i] / 32768.0;
-        }
-
-        // Create an AudioBuffer. Gemini TTS typically uses 24000Hz.
-        const audioBuffer = ctx.createBuffer(1, floatData.length, 24000);
-        audioBuffer.copyToChannel(floatData, 0);
-        
+        const decodedData = await ctx.decodeAudioData(audioBufferData);
         const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
+        source.buffer = decodedData;
         source.connect(ctx.destination);
-        source.onended = () => setIsPlayingAudio(false);
+        source.onended = () => {
+          setIsPlayingAudio(false);
+        };
         source.start(0);
       } else {
         setIsPlayingAudio(false);
       }
-    } catch (e) {
-      console.error("Audio playback error:", e);
+    } catch (err) {
+      console.error("Audio playback error:", err);
       setIsPlayingAudio(false);
     }
   };
 
-  // --- Helper to render text clearly with Custom Colors ---
-  const renderCleanText = (text) => {
-    if (!text) return null;
-
-    // 1. Remove Headers (### Title -> Title)
-    // Replace 1-6 hashes at the start of a line or anywhere followed by space
-    let cleanText = text.replace(/#{1,6}\s?/g, '');
-
-    // 2. Remove Horizontal Rules (--- or ___)
-    cleanText = cleanText.replace(/[-_]{3,}/g, '');
-
-    // 3. Clean Lists (* Item -> • Item)
-    cleanText = cleanText.replace(/^\s*[\-\*]\s/gm, '• ');
-
-    // 4. Parse Custom Colored Tags
-    // Patterns: 
-    // **text** -> Green/Teal (Terms)
-    // [[text]] -> Orange/Amber (Important)
-    // ((text)) -> Purple/Pink (Latin/Names)
-    
-    const parts = cleanText.split(/(\*\*.*?\*\*|\[\[.*?\]\]|\(\(.*?\)\))/g);
-    
-    return parts.map((part, index) => {
-      // Handle **Term** (Teal)
-      if (part.startsWith('**') && part.endsWith('**')) {
-        const content = part.slice(2, -2);
-        return (
-          <span key={index} className="text-teal-400 font-extrabold tracking-wide drop-shadow-[0_0_5px_rgba(45,212,191,0.3)]">
-            {content}
-          </span>
-        );
-      }
-      
-      // Handle [[Important]] (Amber/Orange)
-      if (part.startsWith('[[') && part.endsWith(']]')) {
-        const content = part.slice(2, -2);
-        return (
-          <span key={index} className="text-amber-400 font-bold border-b border-amber-400/30">
-            {content}
-          </span>
-        );
-      }
-
-      // Handle ((Scientific/Name)) (Purple)
-      if (part.startsWith('((') && part.endsWith('))')) {
-        const content = part.slice(2, -2);
-        return (
-          <span key={index} className="text-fuchsia-400 italic font-serif font-semibold">
-            {content}
-          </span>
-        );
-      }
-
-      return part;
+  const fileToGenerativePart = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Data = reader.result.split(',')[1];
+        resolve({
+          data: base64Data,
+          mimeType: file.type
+        });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
   };
 
-  return (
-    <div className="flex flex-col h-full relative overflow-hidden bg-slate-900">
-      
-      {/* Styles for Animations */}
-      <style>{`
-        .box-shadow-neon { box-shadow: 0 0 20px rgba(52, 211, 153, 0.4); }
-      `}</style>
+  const handleSamplePrompt = (promptText) => {
+    handleSend(promptText);
+  };
 
-      {/* Background Layer: Nature Scene */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat pointer-events-none"
-        style={{ 
-          // Mystical Green Forest Background
-          backgroundImage: `url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2560&auto=format&fit=crop')`
-        }}
-      >
-         {/* Minimal Dark Overlay for maximum clarity */}
-         <div className="absolute inset-0 bg-black/20"></div>
+  const renderFormattedText = (text) => {
+    if (!text) return null;
+    let formatted = text
+      .replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-emerald-400">$1</span>')
+      .replace(/\[\[(.*?)\]\]/g, '<span class="font-bold text-amber-300 bg-amber-950/40 px-1 py-0.5 rounded border border-amber-500/30">$1</span>')
+      .replace(/\(\((.*?)\)\)/g, '<span class="italic text-purple-300">$1</span>');
+
+    return <div dangerouslySetInnerHTML={{ __html: formatted.replace(/\n/g, '<br/>') }} />;
+  };
+
+  return (
+    <div className="relative w-full h-full flex flex-col bg-slate-950 text-white overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute top-10 right-10 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 left-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Voice Mode Overlay */}
-      {isVoiceMode && (
+      {/* Voice Overlay */}
+      {isVoiceOverlayOpen && (
         <VoiceOverlay 
-          onClose={() => setIsVoiceMode(false)} 
+          onClose={() => setIsVoiceOverlayOpen(false)}
           onSend={handleSend}
           isProcessing={isLoading}
           isPlayingAudio={isPlayingAudio}
@@ -454,19 +350,31 @@ export const ChatInterface = () => {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 relative z-10 no-scrollbar">
-        {/* Empty State Removed: Only Background Visible */}
-        
         {messages.length === 0 && !isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-10 md:mt-14 mb-8">
-            {samplePrompts.map((prompt) => (
-              <button
-                key={prompt}
-                onClick={() => handleSamplePrompt(prompt)}
-                className="text-left bg-black/55 border border-white/20 hover:border-emerald-400/50 hover:bg-black/65 backdrop-blur-sm transition-all rounded-2xl p-4 text-sm md:text-base font-medium text-white/90"
-              >
-                {prompt}
-              </button>
-            ))}
+          <div className="max-w-2xl mx-auto mt-8 md:mt-12 text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-300 text-xs font-semibold mb-4">
+              <Sparkles size={16} /> {isPhysics ? "FizLab AI — Fizika va Laboratoriya Ustoz" : "EduBio AI Assistent"}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-extrabold mb-3 text-white">
+              {isPhysics ? "Fizika bo'yicha savollaringizni bering" : "Biologiya va Tabiat fanlari bo'yicha savol bering"}
+            </h1>
+            <p className="text-slate-400 text-sm mb-8">
+              {isPhysics
+                ? "Laboratoriya tajribalari, Arximed kuchi, fizik masalalar hamda xatolar tahlili bo'yicha AI yordam oling."
+                : "Hujayra biologiyasi, botanika, zoologiya va 3D modellar haqida so'rang."}
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-left">
+              {samplePrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => handleSamplePrompt(prompt)}
+                  className="bg-slate-900/80 border border-slate-800 hover:border-teal-500/50 hover:bg-slate-800/90 transition-all rounded-2xl p-4 text-sm font-medium text-slate-200 shadow-md"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -474,131 +382,100 @@ export const ChatInterface = () => {
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl p-4 backdrop-blur-md shadow-lg transition-all ${
               msg.role === 'user' 
-                ? 'bg-emerald-900/70 text-white border border-emerald-500/30' 
-                : 'bg-black/60 text-gray-100 border border-white/10'
+                ? 'bg-teal-900/70 text-white border border-teal-500/30'
+                : 'bg-slate-900/80 text-slate-100 border border-slate-800'
             }`}>
               {msg.role === 'model' && (
-                <div className="flex items-center gap-2 mb-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
-                  <Sparkles size={12} /> EduBio AI
+                <div className="flex items-center gap-2 mb-2 text-xs font-bold text-teal-400">
+                  <Sparkles size={14} /> {isPhysics ? "FizLab AI Ustoz" : "EduBio AI"}
                 </div>
-              )}
-              
-              {/* Display Images */}
-              {msg.imageUrl && (
-                <img src={msg.imageUrl} alt="Uploaded or Generated" className="rounded-xl mb-3 max-h-80 w-full object-cover border border-white/10" />
               )}
 
-              {/* Text Content with Auto-Formatting */}
-              <p className="whitespace-pre-wrap leading-relaxed text-[15px] md:text-base">
-                {renderCleanText(msg.content)}
-              </p>
-              
-              {msg.role === 'model' && (
-                <div className="flex items-center mt-3">
-                  <button 
-                    onClick={() => playTTS(msg.content)}
-                    disabled={isPlayingAudio}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-xs text-emerald-200/70 transition-colors"
-                  >
-                    {isPlayingAudio ? <Loader2 className="animate-spin w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                    <span>O'qish</span>
-                  </button>
-                </div>
+              {msg.imageUrl && (
+                <img
+                  src={msg.imageUrl}
+                  alt="Attachment"
+                  className="w-full max-h-60 object-cover rounded-xl mb-3 border border-white/10"
+                />
               )}
+
+              <div className="text-sm leading-relaxed">
+                {renderFormattedText(msg.content)}
+              </div>
             </div>
           </div>
         ))}
-        
+
         {isLoading && (
           <div className="flex justify-start">
-            <div className="flex items-center gap-3 text-emerald-300 p-4 bg-black/40 rounded-xl backdrop-blur-sm border border-white/5">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm font-medium">Javob tayyorlanmoqda...</span>
+            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center gap-3">
+              <Loader2 size={18} className="animate-spin text-teal-400" />
+              <span className="text-xs text-slate-300">FizLab AI o'ylanmoqda va tahlil qilmoqda...</span>
             </div>
           </div>
         )}
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area (pb-24: pastki menyu ko'rinadigan ekranlarda yopilib qolmasligi uchun) */}
-      <div className="p-3 pb-24 md:p-6 md:pb-24 lg:pb-6 z-20">
-        <div className="max-w-3xl mx-auto relative">
-          
-          {/* File Preview (Both Images and Docs) */}
-          {selectedFile && (
-            <div className="absolute bottom-full left-0 mb-4 p-2 bg-black/80 rounded-xl border border-white/10 shadow-xl flex items-center gap-3 animate-fade-in backdrop-blur-md min-w-[150px]">
-              {previewUrl ? (
-                  <img src={previewUrl} alt="Preview" className="w-16 h-16 object-cover rounded-lg" />
-              ) : (
-                  <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center">
-                    {getFileIcon(selectedFile.name)}
-                  </div>
-              )}
-              <div className="flex flex-col mr-2">
-                  <span className="text-white text-sm font-medium truncate max-w-[150px]">{selectedFile.name}</span>
-                  <span className="text-white/50 text-xs">{(selectedFile.size / 1024).toFixed(1)} KB</span>
-              </div>
-              <button 
-                onClick={clearSelectedFile}
-                className="p-1.5 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-colors ml-auto"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
-
-          {/* Input Bar - Natural/Glass Style */}
-          <div className="relative flex items-center bg-black/50 backdrop-blur-xl rounded-full p-2 pr-2 shadow-2xl border border-white/10 transition-all focus-within:border-emerald-500/50 focus-within:bg-black/70 focus-within:shadow-emerald-500/10">
-            
-            {/* File Upload Button (Generic) */}
-            <input 
-              type="file" 
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
-              className="hidden"
-            />
+      {/* Input Area */}
+      <div className="relative z-20 p-4 bg-slate-900/80 border-t border-slate-800 backdrop-blur-md">
+        {selectedFile && (
+          <div className="max-w-4xl mx-auto mb-3 flex items-center gap-3 bg-slate-800 p-2.5 rounded-xl border border-slate-700">
+            {previewUrl ? (
+              <img src={previewUrl} alt="Preview" className="w-10 h-10 object-cover rounded-lg" />
+            ) : (
+              <FileIcon size={24} className="text-teal-400" />
+            )}
+            <span className="text-xs text-slate-200 truncate max-w-xs">{selectedFile.name}</span>
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-3 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-colors ml-1"
-              title="Fayl yuklash (Rasm, PDF, Word, Excel)"
+              onClick={clearSelectedFile}
+              className="ml-auto p-1 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white"
             >
-              <Paperclip size={20} />
+              <X size={16} />
             </button>
-
-            <div className="pl-2 flex-1">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSend();
-                }}
-                placeholder={selectedFile ? "Fayl haqida so'rang..." : "Savol bering..."}
-                className="w-full bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 text-base outline-none"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-               {/* Microphone Button */}
-               <button
-                  onClick={() => setIsVoiceMode(true)}
-                  disabled={isLoading}
-                  className="p-2 rounded-full text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
-                  title="Ovozli rejimi"
-               >
-                  <Mic size={20} />
-               </button>
-               
-               <button
-                onClick={() => handleSend()}
-                disabled={(!input.trim() && !selectedFile) || isLoading}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/20"
-              >
-                {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-              </button>
-            </div>
           </div>
+        )}
+
+        <div className="max-w-4xl mx-auto flex items-center gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-colors"
+            title="Fayl yuklash"
+          >
+            <Paperclip size={20} />
+          </button>
+
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder={isPhysics ? "Fizika masalasi yoki laboratoriya haqida so'rang..." : "Biologiya bo'yicha savolingizni yozing..."}
+            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+          />
+
+          <button
+            onClick={() => setIsVoiceOverlayOpen(true)}
+            className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-colors"
+            title="Ovozli kiritish"
+          >
+            <Mic size={20} />
+          </button>
+
+          <button
+            onClick={() => handleSend()}
+            disabled={isLoading || (!input.trim() && !selectedFile)}
+            className="p-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl transition-colors font-semibold"
+          >
+            <Send size={20} />
+          </button>
         </div>
       </div>
     </div>
