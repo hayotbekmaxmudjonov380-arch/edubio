@@ -20,11 +20,15 @@ import {
   Loader2,
   X,
   MapPin,
-  Check
+  Check,
+  ImageIcon,
+  Download,
+  BarChart2,
+  Target
 } from 'lucide-react';
 import { FizLabLogger } from './FizLabLogger';
 import { STEP_STANDARD_TIME, generateDiagnostic } from './FizLabDiagnostic';
-import { analyzeLabStepRealtimeAI, generateLearningRoadmapAI } from '../../services/geminiService';
+import { analyzeLabStepRealtimeAI, generateLearningRoadmapAI, generateBioImage } from '../../services/geminiService';
 
 const STEPS = [
   { id: 'step1', title: '1. Nazariy savol', icon: BookOpen },
@@ -72,6 +76,10 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
   const [roadmapLoading, setRoadmapLoading] = useState(false);
   const [finalDiag, setFinalDiag] = useState(null);
 
+  // AI Generated Infographic Image State
+  const [infographicImg, setInfographicImg] = useState(null);
+  const [isGeneratingImg, setIsGeneratingImg] = useState(false);
+
   useEffect(() => {
     setStepStartTime(Date.now());
   }, [currentStep]);
@@ -105,7 +113,6 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
       if (result) {
         setAiAnalysis(result);
       } else {
-        // Fallback intelligent analysis
         generateFallbackAiAnalysis(stepToAnalyze);
       }
     } catch (e) {
@@ -179,7 +186,7 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
     }
   };
 
-  // Generate Roadmap Modal
+  // Generate Roadmap Modal & Infographic Image
   const handleFinalizeAndShowRoadmap = async (dataToDiag = stepData) => {
     const diag = generateDiagnostic({ name: studentName, sid: studentSid, steps: dataToDiag });
     setFinalDiag(diag);
@@ -197,6 +204,23 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
       setRoadmapData(null);
     } finally {
       setRoadmapLoading(false);
+    }
+  };
+
+  const handleGenerateAiInfographicImage = async () => {
+    setIsGeneratingImg(true);
+    try {
+      const prompt = `A modern, colourful, highly detailed educational infographic roadmap diagram for physics student ${studentName} showing a 3-step learning path to master Archimedes Law (Arximed kuchi), physics laboratory equipment, force measurements, and hydrostatic pressure formulas. Dark starry space background, glowing icons, clean step badges (Step 1, Step 2, Step 3), professional infographic layout.`;
+      const img = await generateBioImage(prompt);
+      if (img) {
+        setInfographicImg(img);
+      } else {
+        alert("AI infografik rasmni hosil qilishda vaqtinchalik xatolik bo'ldi.");
+      }
+    } catch (e) {
+      alert("AI rasm generatsiyasida xatolik yuz berdi.");
+    } finally {
+      setIsGeneratingImg(false);
     }
   };
 
@@ -660,17 +684,17 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
                 }}
                 className="px-8 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium shadow-lg shadow-emerald-500/30 transition-colors flex items-center ml-auto gap-2"
               >
-                <Sparkles size={18} /> Yakunlab AI Yo'l Haritasiga o'tish
+                <Sparkles size={18} /> Yakunlab AI Infografik Yo'l Haritasiga o'tish
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Personalized Learning Roadmap Modal (O'zlashtirish Yo'l Haritasi) */}
+      {/* Personalized Learning Roadmap Infographic Modal */}
       {showRoadmapModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-slate-900 border border-teal-500/40 rounded-3xl p-6 md:p-8 max-w-3xl w-full text-white shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto no-scrollbar">
+          <div className="bg-slate-900 border border-teal-500/40 rounded-3xl p-6 md:p-8 max-w-4xl w-full text-white shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto no-scrollbar">
             <button
               onClick={() => setShowRoadmapModal(false)}
               className="absolute top-5 right-5 p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-full transition-colors"
@@ -679,33 +703,63 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
             </button>
 
             {/* Modal Header */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400">
-                <Compass size={28} />
-              </div>
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 text-[11px] font-semibold mb-1">
-                  <Sparkles size={12} /> FizLab AI Diagnostikasi
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400">
+                  <Compass size={28} />
                 </div>
-                <h2 className="text-xl md:text-2xl font-extrabold text-white">
-                  O'quvchi O'zlashtirish Yo'l Haritasi
-                </h2>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 text-[11px] font-semibold mb-1">
+                    <Sparkles size={12} /> FizLab AI Diagnostikasi & Infografika
+                  </div>
+                  <h2 className="text-xl md:text-2xl font-extrabold text-white">
+                    Shaxsiy O'zlashtirish Yo'l Haritasi
+                  </h2>
+                </div>
               </div>
+
+              <button
+                onClick={handleGenerateAiInfographicImage}
+                disabled={isGeneratingImg}
+                className="px-4 py-2.5 bg-purple-600/30 hover:bg-purple-600 border border-purple-500/50 text-purple-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+              >
+                {isGeneratingImg ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
+                🎨 AI Infografik Rasm Yaratish
+              </button>
             </div>
 
-            {/* Student Grade Overview */}
-            <div className="bg-slate-800/60 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
-              <div>
+            {/* AI Generated Image Viewer (If generated) */}
+            {infographicImg && (
+              <div className="bg-slate-950 p-3 rounded-2xl border border-purple-500/40 text-center space-y-2 animate-fade-in">
+                <div className="relative rounded-xl overflow-hidden max-h-80 bg-slate-900 border border-slate-800">
+                  <img src={infographicImg} alt="AI Infographic Roadmap" className="w-full h-full object-contain mx-auto" />
+                </div>
+                <div className="flex justify-between items-center px-2">
+                  <span className="text-xs text-purple-300 font-semibold">AI Tomonidan Generatsiya Qilingan Infografik Yo'l Haritasi</span>
+                  <a
+                    href={infographicImg}
+                    download={`${studentName}_infografika_yol_haritasi.png`}
+                    className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold flex items-center gap-1"
+                  >
+                    <Download size={14} /> Yuklab Olish
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Student Grade Overview Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl">
                 <span className="text-xs text-slate-400 block mb-1">O'quvchi:</span>
                 <span className="text-base font-bold text-teal-300">{studentName}</span>
               </div>
-              <div>
+              <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl">
                 <span className="text-xs text-slate-400 block mb-1">Jami Xatolar:</span>
-                <span className="text-sm font-mono font-bold text-white">{finalDiag?.totalErrors || 0} ta</span>
+                <span className="text-base font-mono font-bold text-white">{finalDiag?.totalErrors || 0} ta xato</span>
               </div>
-              <div>
-                <span className="text-xs text-slate-400 block mb-1">Umumiy Daraja:</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${
+              <div className="bg-slate-800/80 border border-slate-700/60 p-4 rounded-2xl">
+                <span className="text-xs text-slate-400 block mb-1">Joriy Bilim Darajasi:</span>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border inline-block ${
                   finalDiag?.overallColor === 'green'
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                     : finalDiag?.overallColor === 'yellow'
@@ -717,50 +771,138 @@ export const FizLabLab = ({ studentName = "O'quvchi", studentSid = "guest", onFi
               </div>
             </div>
 
-            {/* Generated Roadmap Content */}
-            {roadmapLoading ? (
-              <div className="py-12 text-center space-y-4">
-                <Loader2 size={36} className="animate-spin text-teal-400 mx-auto" />
-                <p className="text-sm text-slate-300 font-medium">
-                  FizLab AI o'quvchining xatolari va harakatlarini tahlil qilib, shaxsiy O'zlashtirish Yo'l Haritasini tuzmoqda...
-                </p>
+            {/* Interactive Visual Infographic Flowchart */}
+            <div className="bg-slate-950/80 border border-slate-800 p-6 rounded-3xl space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-teal-300 flex items-center gap-2">
+                  <Target size={18} /> 3-Bosqichli Vizual Infografik O'zlashtirish Zanjiri
+                </h3>
+                <span className="text-[11px] text-slate-400 font-mono">Infografika Rejimi</span>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {roadmapData ? (
-                  <div className="bg-slate-950/80 border border-teal-500/30 rounded-2xl p-5 text-sm leading-relaxed text-slate-200">
-                    <div dangerouslySetInnerHTML={{
-                      __html: roadmapData
-                        .replace(/\n/g, '<br/>')
-                        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-teal-300 font-bold">$1</strong>')
-                    }} />
+
+              {/* 3 Node Diagram Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
+                {/* Node 1 */}
+                <div className="bg-slate-900 border border-purple-500/40 p-5 rounded-2xl space-y-3 relative group hover:border-purple-400 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 font-bold text-xs flex items-center justify-center border border-purple-500/40">
+                      01
+                    </span>
+                    <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] font-bold rounded">
+                      Nazariya
+                    </span>
                   </div>
-                ) : (
-                  /* Fallback Roadmap */
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-teal-300 flex items-center gap-2">
-                      <MapPin size={18} /> 3 Bosqichli Tavsiya Qilingan Yo'l Haritasi:
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-xl">
-                        <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded mb-2 inline-block">1-Qadam: Nazariya</span>
-                        <h4 className="font-bold text-xs text-white mb-1">Arximed qonuni va gidrostatik bosim</h4>
-                        <p className="text-[11px] text-slate-400">Suyuqlikka botirilgan jismga ta'sir qiluvchi kuch sabablarini takrorlang.</p>
-                      </div>
-                      <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-xl">
-                        <span className="text-xs font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded mb-2 inline-block">2-Qadam: Amaliyot</span>
-                        <h4 className="font-bold text-xs text-white mb-1">Dinamometr va Stakan bilan ishlash</h4>
-                        <p className="text-[11px] text-slate-400">Dinamometr ko'rsatkichini va suyuqlik hajmini aniq o'lchashni mashq qiling.</p>
-                      </div>
-                      <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-xl">
-                        <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded mb-2 inline-block">3-Qadam: Hisoblash</span>
-                        <h4 className="font-bold text-xs text-white mb-1">Formulalar va o'lchov birliklari</h4>
-                        <p className="text-[11px] text-slate-400">F_bu = P - F1 va F_bu = ρ·g·V formulalari orqali 3 ta masala yeching.</p>
-                      </div>
+                  <h4 className="font-bold text-sm text-white">1-Qadam: Nazariy Poydevor</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Arximed qonuni, gidrostatik bosim va $F_{bu} = \rho \cdot g \cdot V$ formulasi nazariy va fizika mantiqini qayta ko'rib chiqing.
+                  </p>
+                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div className="bg-purple-500 h-full w-[80%]"></div>
+                  </div>
+                </div>
+
+                {/* Node 2 */}
+                <div className="bg-slate-900 border border-teal-500/40 p-5 rounded-2xl space-y-3 relative group hover:border-teal-400 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-300 font-bold text-xs flex items-center justify-center border border-teal-500/40">
+                      02
+                    </span>
+                    <span className="px-2 py-0.5 bg-teal-500/20 text-teal-300 text-[10px] font-bold rounded">
+                      Amaliyot
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white">2-Qadam: Asboblar & Tajriba</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Dinamometr ko'rsatkichini va suyuqlik hajmini o'lchash asboblaridan to'g'ri foydalanishni takroriy mashq qiling.
+                  </p>
+                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div className="bg-teal-500 h-full w-[65%]"></div>
+                  </div>
+                </div>
+
+                {/* Node 3 */}
+                <div className="bg-slate-900 border border-amber-500/40 p-5 rounded-2xl space-y-3 relative group hover:border-amber-400 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 font-bold text-xs flex items-center justify-center border border-amber-500/40">
+                      03
+                    </span>
+                    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold rounded">
+                      Hisoblash
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white">3-Qadam: Formulalar & Birliklar</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    $F_{bu} = P - F1$ ayirmani hisoblash va Nyuton (N) hamda $kg/m^3$ o'lchov birliklarini to'g'ri qo'llash masalalarini yeching.
+                  </p>
+                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div className="bg-amber-500 h-full w-[90%]"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Skills Visual Gauge Bar List */}
+              <div className="pt-4 border-t border-slate-800 space-y-3">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Ko'nikmalar Diagnostikasi Shkalasi</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-slate-300">Asbob tanlash ko'nikmasi:</span>
+                      <span className="text-teal-400 font-bold">85%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-teal-500 h-full w-[85%]"></div>
                     </div>
                   </div>
-                )}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-slate-300">Tajriba rejalashtirish:</span>
+                      <span className="text-emerald-400 font-bold">90%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full w-[90%]"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-slate-300">Hisoblash va Birliklar:</span>
+                      <span className="text-amber-400 font-bold">70%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-amber-500 h-full w-[70%]"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-slate-300">Mantiqiy xulosa:</span>
+                      <span className="text-purple-400 font-bold">80%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-purple-500 h-full w-[80%]"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            {/* Detailed Textual AI Explanation */}
+            {roadmapLoading ? (
+              <div className="py-6 text-center space-y-3">
+                <Loader2 size={28} className="animate-spin text-teal-400 mx-auto" />
+                <p className="text-xs text-slate-300">AI Ustoz batafsil tavsiyalar matnini tayyorlamoqda...</p>
+              </div>
+            ) : (
+              roadmapData && (
+                <div className="bg-slate-950/80 border border-teal-500/30 rounded-2xl p-5 text-sm leading-relaxed text-slate-200 space-y-2">
+                  <h3 className="font-bold text-teal-300 text-sm flex items-center gap-2 mb-2">
+                    <Sparkles size={16} /> AI Ustozning Aniq Tushuntirishi & Yo'riqnomasi:
+                  </h3>
+                  <div dangerouslySetInnerHTML={{
+                    __html: roadmapData
+                      .replace(/\n/g, '<br/>')
+                      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-teal-300 font-bold">$1</strong>')
+                  }} />
+                </div>
+              )
             )}
 
             {/* Modal Actions */}
